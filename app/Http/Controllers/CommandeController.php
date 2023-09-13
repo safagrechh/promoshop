@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Log;
 use App\Models\Commande;
 use App\Models\User;
 use App\Models\CommandeItem;
+use Illuminate\Support\Facades\Storage;
+
 use PDF;
 
 
@@ -98,26 +100,31 @@ public function index()
 
 public function generatePdf($commandeId)
 {
-    try{
+    try {
         Log::info("Generating PDF for Commande ID: $commandeId");
         $commande = Commande::with('items')->findOrFail($commandeId);
       
-    // Generate the PDF view with the commande data
-    $pdf = PDF::loadView('pdfs.commande', ['commande' => $commande]);
+        // Generate the PDF view with the commande data
+        $pdf = PDF::loadView('pdfs.commande', ['commande' => $commande]);
 
-    // Set the PDF download filename
-    $pdfFileName = "commande_{$commande->id}.pdf";
+        // Set the PDF filename (without path)
+        $pdfFileName = "commande_{$commande->id}.pdf";
 
-    // Return the PDF as a download response
-    
-    Log::info('PDF generated successfully');
+        // Store the PDF in the public storage's attachments folder
+        Storage::disk('public')->put('attachments/'.$pdfFileName, $pdf->output());
 
-    return $pdf->download($pdfFileName);
-} catch (\Exception $e) {
-    Log::error('Error generating PDF: ' . $e->getMessage());
-    // Handle the error if needed
+        // Store the PDF path in the database
+        $commande->update(['commande_pdf' => 'attachments/'.$pdfFileName]);
+
+        // Return the PDF file path (public URL)
+        $pdfFilePath = 'storage/attachments/'.$pdfFileName;
+        Log::info('PDF generated successfully');
+
+        return response()->json(['pdf_url' => asset($pdfFilePath)]);
+    } catch (\Exception $e) {
+        Log::error('Error generating PDF: ' . $e->getMessage());
+        // Handle the error if needed
+    }
 }
-}
-
 
 }

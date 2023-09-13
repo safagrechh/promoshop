@@ -1,26 +1,28 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from '@inertiajs/inertia-react';
 import GuestLayout from '@/Layouts/GuestLayout';
 import axios from 'axios';
 
 const Show = ({ commande }) => {
-    const generatePdf = async (commandeId) => {
+    const [pdfUrl, setPdfUrl] = useState(null);
+
+    // Use useEffect to fetch the PDF path when the component mounts
+    useEffect(() => {
+        fetchPdfPath(commande.id);
+    }, [commande.id]);
+
+    const fetchPdfPath = async (commandeId) => {
         try {
-            // Send a GET request to the backend to generate the PDF
-            const response = await axios.get(`/commandes/${commandeId}/pdf`, {
-                responseType: 'blob', // Specify the response type as arraybuffer
-            });
+            // Send a GET request to the backend to get the PDF path
+            const response = await axios.get(`/commandes/${commandeId}/pdf`);
+            
+            // Get the PDF path from the response
+            const pdfPath = response.data.pdf_url;
 
-            // Create a blob from the response data
-            const blob = new Blob([response.data], { type: 'application/pdf' });
-
-            // Create a blob URL for the PDF
-            const url = window.URL.createObjectURL(blob);
-
-            // Open the PDF in a new tab
-            window.open(url);
+            // Set the PDF URL to state
+            setPdfUrl(pdfPath);
         } catch (error) {
-            console.error('Error generating PDF:', error);
+            console.error('Error fetching PDF path:', error);
             // Handle the error if needed
         }
     };
@@ -44,14 +46,17 @@ const Show = ({ commande }) => {
                     ))}
                 </ul>
 
-                {/* Pass the commande.id to the generatePdf function */}
-                <a
-                    href="#"
-                    onClick={() => generatePdf(commande.id)}
-                    className="text-blue-600 hover:underline"
-                >
-                    Generate PDF
-                </a>
+                {pdfUrl ? (
+                    // Show a link to open the PDF in a new tab
+                    <a href={pdfUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                        Open PDF
+                    </a>
+                ) : (
+                    // Show a button to generate the PDF
+                    <button onClick={() => fetchPdfPath(commande.id)} className="text-blue-600 hover:underline">
+                        Generate PDF
+                    </button>
+                )}
 
                 <Link href="/mescommandes">Back to Orders</Link>
             </div>
